@@ -2,8 +2,10 @@ import SwiftUI
 import Kestrel
 
 struct ContentView: View {
+    private let core = KestrelCore()
+    
     var body: some View {
-        KestrelView()
+        KestrelView(core: core)
             .ignoresSafeArea()
     }
 }

@@ -30,6 +30,8 @@ final class Renderer: NSObject, MTKViewDelegate {
               let drawable = view.currentDrawable
         else { return }
         
+        // user functions should be called here somehow
+        
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()

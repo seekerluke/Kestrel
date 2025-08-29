@@ -2,12 +2,14 @@ import SwiftUI
 import MetalKit
 
 public struct KestrelView: UIViewRepresentable {
-    private let renderer = Renderer()
+    private let core: KestrelCore
     
-    public init() {}
+    public init(core: KestrelCore) {
+        self.core = core
+    }
     
     public func makeUIView(context: Context) -> MTKView {
-        return renderer.makeUIView()
+        return core.makeUIView()
     }
     
     public func updateUIView(_ uiView: UIViewType, context: Context) {

@@ -1,20 +1,34 @@
 import MetalKit
 
 final class Renderer: NSObject, MTKViewDelegate {
+    private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     
-    init(device: MTLDevice) {
-        guard let cq = device.makeCommandQueue() else {
-            fatalError("Command queue could not be initialised")
+    override init() {
+        guard let device = MTLCreateSystemDefaultDevice(),
+              let commandQueue = device.makeCommandQueue()
+        else {
+            fatalError("Metal is not supported")
         }
-        commandQueue = cq
+        
+        self.device = device
+        self.commandQueue = commandQueue
+    }
+    
+    @MainActor
+    func makeUIView() -> MTKView {
+        let view = MTKView(frame: .zero, device: device)
+        view.clearColor = MTLClearColor(red: 1, green: 1, blue: 0.8, alpha: 1)
+        view.delegate = self
+        return view
     }
     
     func draw(in view: MTKView) {
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor),
-              let drawable = view.currentDrawable else { return }
+              let drawable = view.currentDrawable
+        else { return }
         
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)

@@ -10,10 +10,15 @@ let package = Package(
     products: [
         .library(
             name: "Kestrel",
-            targets: ["Kestrel"]),
+            targets: ["Kestrel"]
+        ),
     ],
     targets: [
         .target(
-            name: "Kestrel"),
+            name: "Kestrel",
+            resources: [
+                .process("Resources")
+            ]
+        ),
     ]
 )

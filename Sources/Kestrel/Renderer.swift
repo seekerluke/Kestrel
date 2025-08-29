@@ -3,20 +3,23 @@ import simd
 
 struct Vertex {
     var position: SIMD3<Float>
-    var color: SIMD4<Float>
+    var uv: SIMD2<Float>
 }
 
 final class Renderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
-    private let pipelineState: MTLRenderPipelineState
     
     private let cubeVertices: [Vertex]
     private let cubeIndices: [UInt16]
     private let vertexBuffer: MTLBuffer
     private let indexBuffer: MTLBuffer
     
+    private let texture: MTLTexture
+    
+    private let pipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState
+    private let samplerState: MTLSamplerState
     
     private var rotation: Float = 0
     
@@ -39,11 +42,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         
         // position
         vertexDescriptor.attributes[0].format = .float3
-        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].offset = MemoryLayout.offset(of: \Vertex.position)!
         vertexDescriptor.attributes[0].bufferIndex = 0
-        // color
-        vertexDescriptor.attributes[1].format = .float4
-        vertexDescriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+        // uv
+        vertexDescriptor.attributes[1].format = .float2
+        vertexDescriptor.attributes[1].offset = MemoryLayout.offset(of: \Vertex.uv)!
         vertexDescriptor.attributes[1].bufferIndex = 0
         
         vertexDescriptor.layouts[0].stride = MemoryLayout<Vertex>.stride
@@ -61,38 +64,65 @@ final class Renderer: NSObject, MTKViewDelegate {
         depthDescriptor.isDepthWriteEnabled = true
         self.depthState = device.makeDepthStencilState(descriptor: depthDescriptor)!
         
-        // placeholder cube vertices and indices
-        self.cubeVertices = [
-            // front face
-            Vertex(position: [-1, -1, 1], color: [1, 0, 0, 1]),
-            Vertex(position: [1, -1, 1], color: [0, 1, 0, 1]),
-            Vertex(position: [1, 1, 1], color: [0, 0, 1, 1]),
-            Vertex(position: [-1, 1, 1], color: [1, 1, 0, 1]),
-
-            // back face
-            Vertex(position: [-1, -1, -1], color: [1, 0, 1, 1]),
-            Vertex(position: [1, -1, -1], color: [0, 1, 1, 1]),
-            Vertex(position: [1, 1, -1], color: [1, 1, 1, 1]),
-            Vertex(position: [-1, 1, -1], color: [0, 0, 0, 1]),
-        ]
+        let samplerDescriptor = MTLSamplerDescriptor()
+        samplerDescriptor.minFilter = .nearest
+        samplerDescriptor.magFilter = .nearest
+        self.samplerState = device.makeSamplerState(descriptor: samplerDescriptor)!
         
+        // 6 faces × 4 vertices per face
+        self.cubeVertices = [
+            // Front (+Z)
+            Vertex(position: [-1, -1,  1], uv: [0, 0]),
+            Vertex(position: [ 1, -1,  1], uv: [1, 0]),
+            Vertex(position: [ 1,  1,  1], uv: [1, 1]),
+            Vertex(position: [-1,  1,  1], uv: [0, 1]),
+
+            // Back (-Z)
+            Vertex(position: [ 1, -1, -1], uv: [0, 0]),
+            Vertex(position: [-1, -1, -1], uv: [1, 0]),
+            Vertex(position: [-1,  1, -1], uv: [1, 1]),
+            Vertex(position: [ 1,  1, -1], uv: [0, 1]),
+
+            // Left (-X)
+            Vertex(position: [-1, -1, -1], uv: [0, 0]),
+            Vertex(position: [-1, -1,  1], uv: [1, 0]),
+            Vertex(position: [-1,  1,  1], uv: [1, 1]),
+            Vertex(position: [-1,  1, -1], uv: [0, 1]),
+
+            // Right (+X)
+            Vertex(position: [ 1, -1,  1], uv: [0, 0]),
+            Vertex(position: [ 1, -1, -1], uv: [1, 0]),
+            Vertex(position: [ 1,  1, -1], uv: [1, 1]),
+            Vertex(position: [ 1,  1,  1], uv: [0, 1]),
+
+            // Top (+Y)
+            Vertex(position: [-1,  1,  1], uv: [0, 0]),
+            Vertex(position: [ 1,  1,  1], uv: [1, 0]),
+            Vertex(position: [ 1,  1, -1], uv: [1, 1]),
+            Vertex(position: [-1,  1, -1], uv: [0, 1]),
+
+            // Bottom (-Y)
+            Vertex(position: [-1, -1, -1], uv: [0, 0]),
+            Vertex(position: [ 1, -1, -1], uv: [1, 0]),
+            Vertex(position: [ 1, -1,  1], uv: [1, 1]),
+            Vertex(position: [-1, -1,  1], uv: [0, 1])
+        ]
+
         self.cubeIndices = [
-            // Front
-            0, 1, 2, 2, 3, 0,
-            // Right
-            1, 5, 6, 6, 2, 1,
-            // Back
-            5, 4, 7, 7, 6, 5,
-            // Left
-            4, 0, 3, 3, 7, 4,
-            // Top
-            3, 2, 6, 6, 7, 3,
-            // Bottom
-            4, 5, 1, 1, 0, 4
+            0, 1, 2, 2, 3, 0,       // front
+            4, 5, 6, 6, 7, 4,       // back
+            8, 9,10,10,11, 8,       // left
+           12,13,14,14,15,12,       // right
+           16,17,18,18,19,16,       // top
+           20,21,22,22,23,20        // bottom
         ]
         
         self.vertexBuffer = device.makeBuffer(bytes: cubeVertices, length: MemoryLayout<Vertex>.stride * cubeVertices.count)!
         self.indexBuffer = device.makeBuffer(bytes: cubeIndices, length: MemoryLayout<UInt16>.stride * cubeIndices.count)!
+        
+        let textureLoader = MTKTextureLoader(device: device)
+        let textureUrl = Bundle.module.url(forResource: "default", withExtension: "png")!
+        texture = try! textureLoader.newTexture(URL: textureUrl)
     }
     
     @MainActor
@@ -114,13 +144,18 @@ final class Renderer: NSObject, MTKViewDelegate {
         
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setDepthStencilState(depthState)
+        
+        renderEncoder.setFragmentTexture(texture, index: 0)
+        renderEncoder.setFragmentSamplerState(samplerState, index: 0)
+        
         renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         
+        // placeholder perspective matrix with rotation
         rotation += 0.01
         let aspect = Float(view.drawableSize.width / view.drawableSize.height)
-        let projection = float4x4.perspective(fovY: .pi/4, aspect: aspect, nearZ: 0.1, farZ: 100)
-        let viewMatrix = float4x4.translation(0, 0, -10)
-        let modelMatrix = float4x4.rotationY(rotation)
+        let projection = float4x4.perspective(fovY: .pi / 4, aspect: aspect, nearZ: 0.1, farZ: 100)
+        let viewMatrix = float4x4.translation(x: 0, y: 0, z: -10)
+        let modelMatrix = float4x4.rotationX(rotation) * float4x4.rotationY(rotation) * float4x4.scale(x: 2, y: 2)
         var mvp = projection * viewMatrix * modelMatrix
         
         renderEncoder.setVertexBytes(&mvp, length: MemoryLayout<float4x4>.stride, index: 1)
@@ -134,45 +169,5 @@ final class Renderer: NSObject, MTKViewDelegate {
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         // handle resizing
-    }
-}
-
-// temporary AI functions
-extension float4x4 {
-    static func perspective(fovY: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
-        let y = 1 / tan(fovY * 0.5)
-        let x = y / aspect
-        let zRange = farZ - nearZ
-        let z = -(farZ + nearZ) / zRange
-        let wz = -2 * farZ * nearZ / zRange
-
-        return float4x4([
-            SIMD4<Float>(x, 0, 0, 0),
-            SIMD4<Float>(0, y, 0, 0),
-            SIMD4<Float>(0, 0, z, -1),
-            SIMD4<Float>(0, 0, wz, 0)
-        ])
-    }
-
-    static func translation(_ x: Float, _ y: Float, _ z: Float) -> float4x4 {
-        var matrix = matrix_identity_float4x4
-        matrix.columns.3 = [x, y, z, 1]
-        return matrix
-    }
-
-    static func rotationY(_ angle: Float) -> float4x4 {
-        let c = cos(angle)
-        let s = sin(angle)
-        return float4x4([
-            SIMD4<Float>( c, 0, s, 0),
-            SIMD4<Float>( 0, 1, 0, 0),
-            SIMD4<Float>(-s, 0, c, 0),
-            SIMD4<Float>( 0, 0, 0, 1)
-        ])
-    }
-
-    init(_ columns: [SIMD4<Float>]) {
-        self.init()
-        self.columns = (columns[0], columns[1], columns[2], columns[3])
     }
 }

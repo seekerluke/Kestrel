@@ -14,13 +14,6 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let device: MTLDevice
     private let commandQueue: MTLCommandQueue
     
-    private let cubeVertices: [Vertex]
-    private let cubeIndices: [UInt16]
-    private let vertexBuffer: MTLBuffer
-    private let indexBuffer: MTLBuffer
-    
-    private let texture: MTLTexture
-    
     private let pipelineState: MTLRenderPipelineState
     private let depthState: MTLDepthStencilState
     private let samplerState: MTLSamplerState
@@ -34,6 +27,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         else {
             fatalError("Metal is not supported")
         }
+        
+        Assets.shared.initialize(device: device)
         
         self.game = game
         self.device = device
@@ -75,60 +70,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         samplerDescriptor.magFilter = .nearest
         self.samplerState = device.makeSamplerState(descriptor: samplerDescriptor)!
         
-        // 6 faces × 4 vertices per face
-        self.cubeVertices = [
-            // Front (+Z)
-            Vertex(position: [-1, -1,  1], uv: [0, 0]),
-            Vertex(position: [ 1, -1,  1], uv: [1, 0]),
-            Vertex(position: [ 1,  1,  1], uv: [1, 1]),
-            Vertex(position: [-1,  1,  1], uv: [0, 1]),
-
-            // Back (-Z)
-            Vertex(position: [ 1, -1, -1], uv: [0, 0]),
-            Vertex(position: [-1, -1, -1], uv: [1, 0]),
-            Vertex(position: [-1,  1, -1], uv: [1, 1]),
-            Vertex(position: [ 1,  1, -1], uv: [0, 1]),
-
-            // Left (-X)
-            Vertex(position: [-1, -1, -1], uv: [0, 0]),
-            Vertex(position: [-1, -1,  1], uv: [1, 0]),
-            Vertex(position: [-1,  1,  1], uv: [1, 1]),
-            Vertex(position: [-1,  1, -1], uv: [0, 1]),
-
-            // Right (+X)
-            Vertex(position: [ 1, -1,  1], uv: [0, 0]),
-            Vertex(position: [ 1, -1, -1], uv: [1, 0]),
-            Vertex(position: [ 1,  1, -1], uv: [1, 1]),
-            Vertex(position: [ 1,  1,  1], uv: [0, 1]),
-
-            // Top (+Y)
-            Vertex(position: [-1,  1,  1], uv: [0, 0]),
-            Vertex(position: [ 1,  1,  1], uv: [1, 0]),
-            Vertex(position: [ 1,  1, -1], uv: [1, 1]),
-            Vertex(position: [-1,  1, -1], uv: [0, 1]),
-
-            // Bottom (-Y)
-            Vertex(position: [-1, -1, -1], uv: [0, 0]),
-            Vertex(position: [ 1, -1, -1], uv: [1, 0]),
-            Vertex(position: [ 1, -1,  1], uv: [1, 1]),
-            Vertex(position: [-1, -1,  1], uv: [0, 1])
-        ]
-
-        self.cubeIndices = [
-            0, 1, 2, 2, 3, 0,       // front
-            4, 5, 6, 6, 7, 4,       // back
-            8, 9,10,10,11, 8,       // left
-           12,13,14,14,15,12,       // right
-           16,17,18,18,19,16,       // top
-           20,21,22,22,23,20        // bottom
-        ]
-        
-        self.vertexBuffer = device.makeBuffer(bytes: cubeVertices, length: MemoryLayout<Vertex>.stride * cubeVertices.count)!
-        self.indexBuffer = device.makeBuffer(bytes: cubeIndices, length: MemoryLayout<UInt16>.stride * cubeIndices.count)!
-        
-        let textureLoader = MTKTextureLoader(device: device)
-        let textureUrl = Bundle.module.url(forResource: "default", withExtension: "png")!
-        texture = try! textureLoader.newTexture(URL: textureUrl)
+        game.create()
     }
     
     @MainActor

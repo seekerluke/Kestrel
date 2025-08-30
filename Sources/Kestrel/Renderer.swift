@@ -96,7 +96,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         let orthoWidth = Float(view.drawableSize.width)
         let orthoHeight = Float(view.drawableSize.height)
         let defaultProjection = float4x4.orthographic(left: 0, right: orthoWidth, bottom: orthoHeight, top: 0, near: -1000, far: 1000)
-        let context = RenderContext(renderEncoder, renderQueue, defaultProjection)
+        let context = RenderContext(renderEncoder, renderQueue, defaultProjection, view.drawableSize)
         game.render(ctx: context)
         
         renderEncoder.setRenderPipelineState(pipelineState)
@@ -112,18 +112,13 @@ final class Renderer: NSObject, MTKViewDelegate {
                 renderEncoder.setFragmentTexture(texture, index: 0)
             }
             
-            // pick either common mesh or custom vertices
-            if let meshType = renderable.meshType {
-                let mesh = MeshLibrary.shared[meshType]
-                renderEncoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
-                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: mesh.indexCount, indexType: .uint16, indexBuffer: mesh.indexBuffer, indexBufferOffset: 0)
-            } else if let vertices = renderable.vertices, let indices = renderable.indices {
-                let length = MemoryLayout<Vertex>.stride * vertices.count
-                renderEncoder.setVertexBytes(vertices, length: length, index: 0)
-                
-                let ibuf = device.makeBuffer(bytes: indices, length: length)!
-                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indices.count, indexType: .uint16, indexBuffer: ibuf, indexBufferOffset: 0)
-            }
+            let verticesLength = MemoryLayout<Vertex>.stride * renderable.vertices.count
+            let indicesLength = MemoryLayout<UInt16>.stride * renderable.indices.count
+            
+            renderEncoder.setVertexBytes(renderable.vertices, length: verticesLength, index: 0)
+            
+            let ibuf = device.makeBuffer(bytes: renderable.indices, length: indicesLength)!
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: renderable.indices.count, indexType: .uint16, indexBuffer: ibuf, indexBufferOffset: 0)
         }
         
         renderEncoder.endEncoding()

@@ -2,16 +2,18 @@ import MetalKit
 import simd
 
 public class RenderContext {
-    public let projection: float4x4
+    public var projection: float4x4
+    public let size: CGSize
     
     private let encoder: MTLRenderCommandEncoder
     private var renderQueue: RenderQueue
     private var modelStack: [float4x4] = [matrix_identity_float4x4]
     
-    public init(_ encoder: MTLRenderCommandEncoder, _ renderQueue: RenderQueue, _ projection: float4x4) {
+    public init(_ encoder: MTLRenderCommandEncoder, _ renderQueue: RenderQueue, _ projection: float4x4, _ drawableSize: CGSize) {
         self.encoder = encoder
         self.renderQueue = renderQueue
         self.projection = projection
+        self.size = drawableSize
     }
     
     public func pushMatrix() {
@@ -54,7 +56,8 @@ public class RenderContext {
         let quadWidth = Float(texture?.width ?? 100)
         let quadHeight = Float(texture?.height ?? 100)
         
-        var modelMatrix = float4x4.translation(x: position.x, y: position.y, z: position.z)
+        var modelMatrix = modelStack.last!
+        modelMatrix *= float4x4.translation(x: position.x, y: position.y, z: position.z)
         modelMatrix *= float4x4.scale(x: quadWidth, y: quadHeight, z: 1)
 
         var uvOffset: SIMD2<Float> = [0,0]
@@ -64,7 +67,8 @@ public class RenderContext {
             uvSize = [Float(rect.size.width) / quadWidth, Float(rect.size.height) / quadHeight]
         }
 
-        let renderable = Renderable(mesh: .quad, texture: texture, uvOffset: uvOffset, uvSize: uvSize, modelMatrix: modelMatrix)
+        let mesh = MeshLibrary.shared[.quad]
+        let renderable = Renderable(vertices: mesh.vertices, indices: mesh.indices, texture: texture, uvOffset: uvOffset, uvSize: uvSize, modelMatrix: modelMatrix)
         renderQueue.items.append(renderable)
     }
 

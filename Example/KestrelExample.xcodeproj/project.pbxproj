@@ -8,12 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		A325E8B42E61E8640076C83F /* Kestrel in Frameworks */ = {isa = PBXBuildFile; productRef = A325E8B32E61E8640076C83F /* Kestrel */; };
+		A3552F122E6388CF007E812C /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A3552F112E6388CF007E812C /* Metal.framework */; };
 		A3696E092E61F64E00B2FB13 /* Kestrel in Frameworks */ = {isa = PBXBuildFile; productRef = A3696E082E61F64E00B2FB13 /* Kestrel */; };
 		A3696E0C2E61F67500B2FB13 /* Kestrel in Frameworks */ = {isa = PBXBuildFile; productRef = A3696E0B2E61F67500B2FB13 /* Kestrel */; };
 		A369DEBC2E61E50C00F5E3CB /* Kestrel in Frameworks */ = {isa = PBXBuildFile; productRef = A369DEBB2E61E50C00F5E3CB /* Kestrel */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A3552F112E6388CF007E812C /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
 		A369DEAB2E61E4D800F5E3CB /* KestrelExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KestrelExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -32,6 +34,7 @@
 			files = (
 				A3696E092E61F64E00B2FB13 /* Kestrel in Frameworks */,
 				A3696E0C2E61F67500B2FB13 /* Kestrel in Frameworks */,
+				A3552F122E6388CF007E812C /* Metal.framework in Frameworks */,
 				A369DEBC2E61E50C00F5E3CB /* Kestrel in Frameworks */,
 				A325E8B42E61E8640076C83F /* Kestrel in Frameworks */,
 			);
@@ -40,10 +43,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A3552F102E6388CE007E812C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A3552F112E6388CF007E812C /* Metal.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		A369DEA22E61E4D800F5E3CB = {
 			isa = PBXGroup;
 			children = (
 				A369DEAD2E61E4D800F5E3CB /* KestrelExample */,
+				A3552F102E6388CE007E812C /* Frameworks */,
 				A369DEAC2E61E4D800F5E3CB /* Products */,
 			);
 			sourceTree = "<group>";

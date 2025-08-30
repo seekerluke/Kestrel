@@ -1,19 +1,17 @@
 import simd
 
 // All of this is AI generated, I don't know matrix math and I don't care. They seem to work fine, but optimisations are welcome.
-extension float4x4 {
+public extension float4x4 {
     static func perspective(fovY: Float, aspect: Float, nearZ: Float, farZ: Float) -> float4x4 {
-        let y = 1 / tan(fovY * 0.5)
-        let x = y / aspect
+        let yScale = 1 / tan(fovY * 0.5)
+        let xScale = yScale / aspect
         let zRange = farZ - nearZ
-        let z = -(farZ + nearZ) / zRange
-        let wz = -2 * farZ * nearZ / zRange
-
+        
         return float4x4([
-            SIMD4<Float>(x, 0, 0, 0),
-            SIMD4<Float>(0, y, 0, 0),
-            SIMD4<Float>(0, 0, z, -1),
-            SIMD4<Float>(0, 0, wz, 0)
+            SIMD4<Float>(xScale, 0, 0, 0),
+            SIMD4<Float>(0, yScale, 0, 0),
+            SIMD4<Float>(0, 0, farZ / zRange, 1),
+            SIMD4<Float>(0, 0, -nearZ * farZ / zRange, 0)
         ])
     }
     
@@ -24,13 +22,10 @@ extension float4x4 {
         let f_n = far - near
 
         return float4x4([
-            SIMD4<Float>( 2.0 / r_l, 0, 0, 0),
-            SIMD4<Float>( 0, 2.0 / t_b, 0, 0),
-            SIMD4<Float>( 0, 0, -2.0 / f_n, 0),
-            SIMD4<Float>( -(right + left) / r_l,
-                          -(top + bottom) / t_b,
-                          -(far + near) / f_n,
-                           1.0)
+            SIMD4<Float>(2.0 / r_l, 0, 0, 0),
+            SIMD4<Float>(0, 2.0 / t_b, 0, 0),
+            SIMD4<Float>(0, 0, -2.0 / f_n, 0),
+            SIMD4<Float>(-(right + left) / r_l, -(top + bottom) / t_b, -(far + near) / f_n, 1.0)
         ])
     }
 

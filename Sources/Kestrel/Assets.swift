@@ -16,28 +16,28 @@ public final class Assets {
     }
     
     public func loadTexture(name: String, fileExtension: String = "png", bundle: Bundle = .main) -> MTLTexture {
-            guard let textureLoader = textureLoader else {
-                fatalError("Must call Assets.shared.initialize() before loading anything.")
-            }
-        
-            if let cached = textures[name] {
-                return cached
-            }
-            
-            guard let url = bundle.url(forResource: name, withExtension: fileExtension) else {
-                fatalError("Texture \(name).\(fileExtension) not found in bundle")
-            }
-            
-            do {
-                let texture = try textureLoader.newTexture(URL: url)
-                textures[name] = texture
-                return texture
-            } catch {
-                fatalError("Failed to load texture \(name): \(error)")
-            }
+        guard let textureLoader = textureLoader else {
+            fatalError("Must call Assets.shared.initialize() before loading anything.")
+        }
+    
+        if let cached = textures[name] {
+            return cached
         }
         
-        public func texture(named name: String) -> MTLTexture? {
-            return textures[name]
+        guard let url = bundle.url(forResource: name, withExtension: fileExtension) else {
+            fatalError("Texture \(name).\(fileExtension) not found in bundle")
         }
+        
+        do {
+            let texture = try textureLoader.newTexture(URL: url)
+            textures[name] = texture
+            return texture
+        } catch {
+            fatalError("Failed to load texture \(name): \(error)")
+        }
+    }
+    
+    public func texture(named name: String) -> MTLTexture? {
+        return textures[name]
+    }
 }

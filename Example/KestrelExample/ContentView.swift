@@ -2,10 +2,10 @@ import SwiftUI
 import Kestrel
 
 struct ContentView: View {
-    private let core = KestrelCore()
+    private let game = MyGame()
     
     var body: some View {
-        KestrelView(core: core)
+        KestrelView(game: game)
             .ignoresSafeArea()
     }
 }

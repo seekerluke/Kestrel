@@ -1,9 +1,13 @@
 import MetalKit
 import simd
 
-struct Vertex {
+public struct Vertex {
     var position: SIMD3<Float>
     var uv: SIMD2<Float>
+}
+
+final public class RenderQueue {
+    var items: [Renderable] = []
 }
 
 final class Renderer: NSObject, MTKViewDelegate {
@@ -21,15 +25,17 @@ final class Renderer: NSObject, MTKViewDelegate {
     private let depthState: MTLDepthStencilState
     private let samplerState: MTLSamplerState
     
-    private var rotation: Float = 0
+    private let game: KestrelGame
+    private var renderQueue = RenderQueue()
     
-    override init() {
+    init(game: KestrelGame) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let commandQueue = device.makeCommandQueue()
         else {
             fatalError("Metal is not supported")
         }
         
+        self.game = game
         self.device = device
         self.commandQueue = commandQueue
         
@@ -136,35 +142,53 @@ final class Renderer: NSObject, MTKViewDelegate {
     }
     
     func draw(in view: MTKView) {
+        // TODO: add delta time, core animation might have something to use here
+        game.update(deltaTime: 0)
+        
         guard let commandBuffer = commandQueue.makeCommandBuffer(),
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor),
               let drawable = view.currentDrawable
         else { return }
         
+        let orthoWidth = Float(view.drawableSize.width)
+        let orthoHeight = Float(view.drawableSize.height)
+        let defaultProjection = float4x4.orthographic(left: 0, right: orthoWidth, bottom: orthoHeight, top: 0, near: -1000, far: 1000)
+        let context = RenderContext(renderEncoder, renderQueue, defaultProjection)
+        game.render(ctx: context)
+        
         renderEncoder.setRenderPipelineState(pipelineState)
         renderEncoder.setDepthStencilState(depthState)
-        
-        renderEncoder.setFragmentTexture(texture, index: 0)
         renderEncoder.setFragmentSamplerState(samplerState, index: 0)
         
-        renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        
-        // placeholder perspective matrix with rotation
-        rotation += 0.01
-        let aspect = Float(view.drawableSize.width / view.drawableSize.height)
-        let projection = float4x4.perspective(fovY: .pi / 4, aspect: aspect, nearZ: 0.1, farZ: 100)
-        let viewMatrix = float4x4.translation(x: 0, y: 0, z: -10)
-        let modelMatrix = float4x4.rotationX(rotation) * float4x4.rotationY(rotation) * float4x4.scale(x: 2, y: 2)
-        var mvp = projection * viewMatrix * modelMatrix
-        
-        renderEncoder.setVertexBytes(&mvp, length: MemoryLayout<float4x4>.stride, index: 1)
-        
-        renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: cubeIndices.count, indexType: .uint16, indexBuffer: indexBuffer, indexBufferOffset: 0)
+        for renderable in renderQueue.items {
+            // TODO: need view matrix
+            var mvp = context.projection * renderable.modelMatrix
+            renderEncoder.setVertexBytes(&mvp, length: MemoryLayout<float4x4>.stride, index: 1)
+            
+            if let texture = renderable.texture {
+                renderEncoder.setFragmentTexture(texture, index: 0)
+            }
+            
+            // pick either common mesh or custom vertices
+            if let meshType = renderable.meshType {
+                let mesh = MeshLibrary.shared[meshType]
+                renderEncoder.setVertexBuffer(mesh.vertexBuffer, offset: 0, index: 0)
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: mesh.indexCount, indexType: .uint16, indexBuffer: mesh.indexBuffer, indexBufferOffset: 0)
+            } else if let vertices = renderable.vertices, let indices = renderable.indices {
+                let length = MemoryLayout<Vertex>.stride * vertices.count
+                renderEncoder.setVertexBytes(vertices, length: length, index: 0)
+                
+                let ibuf = device.makeBuffer(bytes: indices, length: length)!
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indices.count, indexType: .uint16, indexBuffer: ibuf, indexBufferOffset: 0)
+            }
+        }
         
         renderEncoder.endEncoding()
         commandBuffer.present(drawable)
         commandBuffer.commit()
+        
+        renderQueue.items.removeAll()
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
